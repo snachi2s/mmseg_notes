@@ -181,7 +181,23 @@ Basically, we are creating a custom class for our dataset and adding metadata su
   
     #https://mmsegmentation.readthedocs.io/en/main/user_guides/1_config.html
    ```
-This is the dataloader file for training and testing. All the functionalities are defined as type annotations in mmsegmentation framework, for example, if we want to load images from the path, we use `dict(type='LoadImageFromFile')` which uses the mmseg api's to do the functionality. All the augmentations, dataloaders are defined as type annotations.
+This is the dataloader file for training and testing. All the functionalities are defined as type annotations in mmsegmentation framework, for example, if we want to load images from the path, we use `dict(type='LoadImageFromFile')` which uses the mmseg api's to do the functionality. All the augmentations, and dataloaders are defined as type annotations.
+**NOTE:** In the given example, validation dataset is used for testing
+
+4. Add dataset meta information in `mmseg/utils/class_names.py`
+   ```
+   def greenhouse_classes():
+    return [
+        "Pipe", "Floor", "Background"
+    ]
+
+def greenhouse_pallete():
+    return [
+        [255, 0, 0],
+        [0, 255, 0],
+        [0, 0, 255]
+    ]
+    ```
 
 ## Pipeline and what needs to be changed?
 
@@ -190,7 +206,8 @@ This is the dataloader file for training and testing. All the functionalities ar
 - train.py is located under `mmsegmentation/tools`, and it needs config file as an argument
 - mmseg has several SOTA models pre-trained under standard datasets. We can adapt those same config files if we have our custom dataset in the standard formats such as Cityscapes, PascalVOC, and ade20k.., Or, we can create custom configs for our dataset
 
-
+# Reference
+- https://github.com/open-mmlab/mmsegmentation
 
 
 
