@@ -1,5 +1,7 @@
 # mmsegmentation
 
+Official documentation: [mmseg](https://mmsegmentation.readthedocs.io/en/main/advanced_guides/index.html)
+
 ## Requirements
 
 ## Creating conda environment (Recommended)
@@ -31,7 +33,7 @@ pip install -v -e .
 ```
 **NOTE:** For installing cpu only version refer [here](https://mmsegmentation.readthedocs.io/en/main/get_started.html#:~:text=%2Dc%20pytorch-,On%20CPU%20platforms%3A,-conda%20install%20pytorch) 
 
-[adding custom components](https://mmsegmentation.readthedocs.io/en/main/advanced_guides/add_models.html)
+[For adding custom components](https://mmsegmentation.readthedocs.io/en/main/advanced_guides/add_models.html)
 
 ## Dataset structure for using our custom dataset 
 
@@ -187,17 +189,40 @@ This is the dataloader file for training and testing. All the functionalities ar
 4. Add dataset meta information in `mmseg/utils/class_names.py`
    ```
    def greenhouse_classes():
-    return [
-        "Pipe", "Floor", "Background"
-    ]
-
-def greenhouse_pallete():
-    return [
-        [255, 0, 0],
-        [0, 255, 0],
-        [0, 0, 255]
-    ]
+      return ["Pipe", "Floor", "Background"]
+   
+   def greenhouse_pallete():
+      return [[255, 0, 0],
+              [0, 255, 0],
+              [0, 0, 255]
+      ]
     ```
+
+With this, our custom dataloader is ready for training.
+
+## Creating a config file
+Components that are required to be defined for creating a config file for training are,
+    - dataset loader
+    - model
+    - scheduler
+    - runtime
+All these are defined under `mmseg\configs\_base_`
+
+## Dataset loader
+- dataset loader is configured (with the above steps)
+      - location: `mmseg\configs\_base_\datasets\greenhouse.py`
+  
+## Defining the model
+      - location: `mmseg\configs\_base_\datasets\greenhouse.py`
+   - We define the data preprocessor like mean, and std.dev of the dataset, defining encoder and decoder head with number of classes,  
+   - In most cases, we will train on the available segmentation models so there won't be many changes in the respective model file
+   - Necessary changes:
+       - changing the number of classes (to be segmented) in the decoder 
+   - Other changes:
+       - Trying out with different decoder heads if it is not already implemented in mmsegmentation
+
+## Scheduler
+ 
 
 ## Pipeline and what needs to be changed?
 
