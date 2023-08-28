@@ -88,6 +88,7 @@ For official documentation, refer [here](https://mmsegmentation.readthedocs.io/e
                    seg_map_suffix=".png",
                    reduce_zero_label=True, #used when background represents 0 in our annotations
                    **kwargs) -> None:
+
           super().__init__(img_suffix=img_suffix,
                            seg_map_suffix=seg_map_suffix,
                            reduce_zero_label=reduce_zero_label,
@@ -107,6 +108,39 @@ Basically, we are creating a custom class for our dataset and adding metadata su
    
    ```
     dataset_type = 'GreenHouseDataset'
+    data_root = 'data/GreenHouse'
+    ...
+   ```
+This is the dataloader file for training and testing. 
+**NOTE:** In the given example, validation dataset is used for testing
+
+4. Add dataset meta information in `mmseg/utils/class_names.py`
+   ```
+   def greenhouse_classes():
+      return ["Pipe", "Floor", "Background"]
+   
+   def greenhouse_pallete():
+      return [[255, 0, 0],
+              [0, 255, 0],
+              [0, 0, 255]
+      ]
+    ```
+
+With this, our custom dataloader is ready for training.
+
+## Creating a config file
+Components that are required to be defined for creating a config file for training are,
+    - dataset loader
+    - model
+    - scheduler
+    - default_runtime (for visualization and runtime setting)
+All these are defined under `mmseg\configs\_base_`
+
+## Dataset loader
+      location: `mmseg\configs\_base_\datasets\greenhouse.py`
+- Custom dataset is ready for loading (with the above steps)
+- 
+``` dataset_type = 'GreenHouseDataset'
     data_root = 'data/GreenHouse'
     img_scale = (896, 512) #https://github.com/open-mmlab/mmsegmentation/issues/887
     crop_size = (449,449)  #during training
@@ -181,49 +215,24 @@ Basically, we are creating a custom class for our dataset and adding metadata su
     val_evaluator = dict(type='IoUMetric', iou_metrics=['mDice', 'mIoU'])
     test_evaluator = val_evaluator
   
-    #https://mmsegmentation.readthedocs.io/en/main/user_guides/1_config.html
-   ```
-This is the dataloader file for training and testing. All the functionalities are defined as type annotations in mmsegmentation framework, for example, if we want to load images from the path, we use `dict(type='LoadImageFromFile')` which uses the mmseg api's to do the functionality. All the augmentations, and dataloaders are defined as type annotations.
-**NOTE:** In the given example, validation dataset is used for testing
-
-4. Add dataset meta information in `mmseg/utils/class_names.py`
-   ```
-   def greenhouse_classes():
-      return ["Pipe", "Floor", "Background"]
-   
-   def greenhouse_pallete():
-      return [[255, 0, 0],
-              [0, 255, 0],
-              [0, 0, 255]
-      ]
-    ```
-
-With this, our custom dataloader is ready for training.
-
-## Creating a config file
-Components that are required to be defined for creating a config file for training are,
-    - dataset loader
-    - model
-    - scheduler
-    - runtime
-All these are defined under `mmseg\configs\_base_`
-
-## Dataset loader
-- dataset loader is configured (with the above steps)
-      - location: `mmseg\configs\_base_\datasets\greenhouse.py`
+    #https://mmsegmentation.readthedocs.io/en/main/user_guides/1_config.html```
+All the functionalities are defined as type annotations in mmsegmentation framework, for example, if we want to load images from the path, we use `dict(type='LoadImageFromFile')` which uses the mmseg api's to do the functionality. All the augmentations, and dataloaders are defined as type annotations.
   
 ## Defining the model
-      - location: `mmseg\configs\_base_\datasets\greenhouse.py`
+      location: `mmseg\configs\_base_\models\segformer_mit-b0.py`
    - We define the data preprocessor like mean, and std.dev of the dataset, defining encoder and decoder head with number of classes,  
-   - In most cases, we will train on the available segmentation models so there won't be many changes in the respective model file
+   - In most cases, we will train on the available segmentation models so there won't be many changes in the respective model file. If we want to implement a new model from scratch, then refer [here](https://mmsegmentation.readthedocs.io/en/main/advanced_guides/add_models.html)
    - Necessary changes:
        - changing the number of classes (to be segmented) in the decoder 
+       - In our case, `num_classes=4` (with background)
    - Other changes:
        - Trying out with different decoder heads if it is not already implemented in mmsegmentation
 
 ## Scheduler
+      location: `mmseg\configs\_base_\schedules\schedule_80k.py`
+  - Here, we define the optimizer, learning rate scheduler, max. iterations, and checkpoints storage
+  - Training configurations can be defined based on iterations or epochs. Validation loops and checkpoints can be performed for every epoch or on a periodic basis.
  
-
 ## Pipeline and what needs to be changed?
 
 `python tools/train.py configs/model/model_with_desired_configuration.py`
