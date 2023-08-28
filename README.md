@@ -101,9 +101,9 @@ Basically, we are creating a custom class for our dataset and adding metadata su
 - **@DATASETS.register_module()** --> mmseg needs to register each of the datasets with a unique class name
   
 2. Import our module in `mmseg/datasets/__init__.py`
-   `
+   ```
    from .greenhouse import GreenHouseDataset
-   `
+   ```
 3. Creating our custom dataset config file `configs/_base_/datasets/greenhouse.py`
    
    ```
@@ -129,7 +129,8 @@ This is the dataloader file for training and testing.
 With this, our custom dataloader is ready for training.
 
 ## Creating a config file
-Components that are required to be defined for creating a config file for training are,
+
+- Components that are required to be defined for creating a config file for training are,
     - dataset loader
     - model
     - scheduler
@@ -137,13 +138,14 @@ Components that are required to be defined for creating a config file for traini
 All these are defined under `mmseg\configs\_base_`
 
 ## Dataset loader
-      location: `mmseg\configs\_base_\datasets\greenhouse.py`
-- Custom dataset is ready for loading (with the above steps)
-- 
+      location: `mmsegmentation\configs\_base_\datasets\greenhouse.py`
+- Custom dataset is ready to be loaded and the next step would be creating dataloaders with augmentations
+- All the functionalities are defined as type annotations in the mmsegmentation framework, for example, if we want to load images from the path, we use `dict(type='LoadImageFromFile')` which uses the mmseg api's to do the functionality. All the augmentations and dataloaders are defined as type annotations.
+
 ``` dataset_type = 'GreenHouseDataset'
     data_root = 'data/GreenHouse'
     img_scale = (896, 512) #https://github.com/open-mmlab/mmsegmentation/issues/887
-    crop_size = (449,449)  #during training
+    crop_size = (448,448)  #during training
     train_pipeline = [
         dict(type='LoadImageFromFile'),
         dict(type='LoadAnnotations'),
@@ -215,30 +217,61 @@ All these are defined under `mmseg\configs\_base_`
     val_evaluator = dict(type='IoUMetric', iou_metrics=['mDice', 'mIoU'])
     test_evaluator = val_evaluator
   
-    #https://mmsegmentation.readthedocs.io/en/main/user_guides/1_config.html```
-All the functionalities are defined as type annotations in mmsegmentation framework, for example, if we want to load images from the path, we use `dict(type='LoadImageFromFile')` which uses the mmseg api's to do the functionality. All the augmentations, and dataloaders are defined as type annotations.
-  
+    #https://mmsegmentation.readthedocs.io/en/main/user_guides/1_config.html
+```
+
+
 ## Defining the model
-      location: `mmseg\configs\_base_\models\segformer_mit-b0.py`
+      location: `mmsegmentation\configs\_base_\models\segformer_mit-b0.py`
    - We define the data preprocessor like mean, and std.dev of the dataset, defining encoder and decoder head with number of classes,  
    - In most cases, we will train on the available segmentation models so there won't be many changes in the respective model file. If we want to implement a new model from scratch, then refer [here](https://mmsegmentation.readthedocs.io/en/main/advanced_guides/add_models.html)
    - Necessary changes:
-       - changing the number of classes (to be segmented) in the decoder 
+       - Changing the number of classes (to be segmented) in the decoder 
        - In our case, `num_classes=4` (with background)
    - Other changes:
        - Trying out with different decoder heads if it is not already implemented in mmsegmentation
 
 ## Scheduler
-      location: `mmseg\configs\_base_\schedules\schedule_80k.py`
+      location: `mmsegmentation\configs\_base_\schedules\schedule_80k.py`
   - Here, we define the optimizer, learning rate scheduler, max. iterations, and checkpoints storage
   - Training configurations can be defined based on iterations or epochs. Validation loops and checkpoints can be performed for every epoch or on a periodic basis.
- 
-## Pipeline and what needs to be changed?
 
+Once these components are set up, the next would be define the config file for our model.
+
+## Writing a config file 
+  ` location: mmsegmentation/configs/model_name.py`
+  - Every config file will inherit one or many components (datasets, models, scheduler) from the `_base_`. Based on this inheritance and their corresponding object creation contents of the config file can vary. Following are the example cases I encountered after cloning the repository initially
+    - When we look at the config file for UNet under `mmsegmentation/configs/unet/unet_s5-d16_deeplabv3_4xb4-40k_chase-db1-128x128.py`
+      ```
+       _base_ = [
+          '../_base_/models/deeplabv3_unet_s5-d16.py',
+          '../_base_/datasets/greenhouse.py',
+          '../_base_/default_runtime.py',
+          '../_base_/schedules/schedule_40k.py'
+      ]
+      crop_size = (256,256)
+      data_preprocessor = dict(size=crop_size)
+      model = dict(
+          data_preprocessor=data_preprocessor,
+          test_cfg=dict(crop_size=(256,256), stride=(85, 85)))
+      ```
+      Here, we inherited all four components for the config file, thus we just reloaded the data_preprocessor for resizing.
+
+    - In another case, 
+
+
+- mmseg has several SOTA models pre-trained under standard datasets. We can adapt those same config files if we have our custom dataset in the standard formats such as Cityscapes, PascalVOC, and ade20k.., Or, we can create custom configs for our dataset
+
+- Initially, when we clone/install the mmsegmentation repository,
+
+## Training 
+
+For training,
 `python tools/train.py configs/model/model_with_desired_configuration.py`
 
 - train.py is located under `mmsegmentation/tools`, and it needs config file as an argument
-- mmseg has several SOTA models pre-trained under standard datasets. We can adapt those same config files if we have our custom dataset in the standard formats such as Cityscapes, PascalVOC, and ade20k.., Or, we can create custom configs for our dataset
+
+## Meaning behind the naming of config file
 
 # Reference
 - https://github.com/open-mmlab/mmsegmentation
