@@ -70,7 +70,7 @@ pip install -v -e .
 For official documentation, refer [here](https://mmsegmentation.readthedocs.io/en/main/advanced_guides/add_datasets.html)
 
 1. Create a new dataset file `mmseg/datasets/greenhouse.py`
-  ```
+  ```python
   from mmseg.registry import DATASETS #register the dataset
   from .basesegdataset import BaseSegDataset
   import mmengine.fileio as fileio
@@ -101,12 +101,12 @@ Basically, we are creating a custom class for our dataset and adding metadata su
 - **@DATASETS.register_module()** --> mmseg needs to register each of the datasets with a unique class name
   
 2. Import our module in `mmseg/datasets/__init__.py`
-   ```
+   ```python
    from .greenhouse import GreenHouseDataset
    ```
 3. Creating our custom dataset config file `configs/_base_/datasets/greenhouse.py`
    
-   ```
+   ```python
     dataset_type = 'GreenHouseDataset'
     data_root = 'data/GreenHouse'
     ...
@@ -115,7 +115,7 @@ This is the dataloader file for training and testing.
 **NOTE:** In the given example, validation dataset is used for testing
 
 4. Add dataset meta information in `mmseg/utils/class_names.py`
-   ```
+   ```python
    def greenhouse_classes():
       return ["Pipe", "Floor", "Background"]
    
@@ -142,7 +142,8 @@ All these are defined under `mmseg\configs\_base_`
 - Custom dataset is ready to be loaded and the next step would be creating dataloaders with augmentations
 - All the functionalities are defined as type annotations in the mmsegmentation framework, for example, if we want to load images from the path, we use `dict(type='LoadImageFromFile')` which uses the mmseg api's to do the functionality. All the augmentations and dataloaders are defined as type annotations.
 
-``` dataset_type = 'GreenHouseDataset'
+```python
+dataset_type = 'GreenHouseDataset'
     data_root = 'data/GreenHouse'
     img_scale = (896, 512) #https://github.com/open-mmlab/mmsegmentation/issues/887
     crop_size = (448,448)  #during training
@@ -232,17 +233,25 @@ All these are defined under `mmseg\configs\_base_`
        - Trying out with different decoder heads if it is not already implemented in mmsegmentation
 
 ## Scheduler
-      location: `mmsegmentation\configs\_base_\schedules\schedule_80k.py`
+      `location: mmsegmentation\configs\_base_\schedules\schedule_80k.py`
   - Here, we define the optimizer, learning rate scheduler, max. iterations, and checkpoints storage
   - Training configurations can be defined based on iterations or epochs. Validation loops and checkpoints can be performed for every epoch or on a periodic basis.
 
-Once these components are set up, the next would be define the config file for our model.
+## default_runtime
+      `location: mmsegmentation\configs\_base_\default_runtime.py`
+   - In this file, we define the visualization and logger hooks
+
+Once these components are set up, the next would be to define the config file for our model.
 
 ## Writing a config file 
   ` location: mmsegmentation/configs/model_name.py`
+  
+  - mmseg has several SOTA models pre-trained under standard datasets. We can adapt those same config files if we have our custom dataset in the standard formats such as Cityscapes, PascalVOC, and ade20k.., Or, we can create custom configs for our dataset
+    
   - Every config file will inherit one or many components (datasets, models, scheduler) from the `_base_`. Based on this inheritance and their corresponding object creation contents of the config file can vary. Following are the example cases I encountered after cloning the repository initially
+    
     - When we look at the config file for UNet under `mmsegmentation/configs/unet/unet_s5-d16_deeplabv3_4xb4-40k_chase-db1-128x128.py`
-      ```
+      ```python
        _base_ = [
           '../_base_/models/deeplabv3_unet_s5-d16.py',
           '../_base_/datasets/greenhouse.py',
@@ -257,12 +266,101 @@ Once these components are set up, the next would be define the config file for o
       ```
       Here, we inherited all four components for the config file, thus we just reloaded the data_preprocessor for resizing.
 
-    - In another case, 
-
-
-- mmseg has several SOTA models pre-trained under standard datasets. We can adapt those same config files if we have our custom dataset in the standard formats such as Cityscapes, PascalVOC, and ade20k.., Or, we can create custom configs for our dataset
-
-- Initially, when we clone/install the mmsegmentation repository,
+    - For the config file of PIDnet under `mmsegmentation/configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py`
+      ```python
+            _base_ = [
+          '../_base_/datasets/greenhouse.py',
+          '../_base_/default_runtime.py'
+        ]
+  
+      class_weight = [1.456, 0.4, 0.4, 0.1] 
+      checkpoint_file = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/pidnet/pidnet-s_imagenet1k_20230306-715e6273.pth'
+      crop_size = (512,512)
+      data_preprocessor = dict(
+          type='SegDataPreProcessor',
+          mean=[123.675, 116.28, 103.53], #TODO: calculation 
+          std=[58.395, 57.12, 57.375],
+          bgr_to_rgb=True,
+          pad_val=0,
+          seg_pad_val=255,
+          size=crop_size)
+      norm_cfg = dict(type='SyncBN', requires_grad=True)
+      model = dict(
+          type='EncoderDecoder',
+          data_preprocessor=data_preprocessor,
+          backbone=dict(
+              type='PIDNet',
+              in_channels=3,
+              channels=32,
+              ppm_channels=96,
+              num_stem_blocks=2,
+              num_branch_blocks=3,
+              align_corners=False,
+              norm_cfg=norm_cfg,
+              act_cfg=dict(type='ReLU', inplace=True),
+              init_cfg=dict(type='Pretrained', checkpoint=checkpoint_file)),
+          decode_head=dict(
+              type='PIDHead',
+              in_channels=128,
+              channels=128,
+              num_classes=4,
+              norm_cfg=norm_cfg,
+              act_cfg=dict(type='ReLU', inplace=True),
+              align_corners=False,  #if True set the img_scale to odd (nx+1) pixels
+              loss_decode=[
+                  dict(
+                      type='TverskyLoss',
+                      ignore_index=255,
+                      class_weight=class_weight,
+                      loss_weight=0.4),
+                  dict(
+                      type='OhemCrossEntropy',
+                      thres=0.9,
+                      min_kept=131072,
+                      class_weight=class_weight,
+                      loss_weight=1.0),
+                  dict(type='BoundaryLoss', loss_weight=20.0),
+                  dict(
+                      type='OhemCrossEntropy',
+                      thres=0.9,
+                      min_kept=131072,
+                      class_weight=class_weight,
+                      loss_weight=1.0)
+              ]),
+          train_cfg=dict(),
+          test_cfg=dict(mode='whole'))
+      
+      iters = 120000
+      # optimizer
+      optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0005)
+      optim_wrapper = dict(type='OptimWrapper', optimizer=optimizer, clip_grad=None)
+      # learning policy
+      param_scheduler = [
+          dict(
+              type='PolyLR',
+              eta_min=0,
+              power=0.9,
+              begin=0,
+              end=iters,
+              by_epoch=False)
+      ]
+      # training schedule for 120k
+      train_cfg = dict(
+          type='IterBasedTrainLoop', max_iters=iters, val_interval=iters // 10)
+      val_cfg = dict(type='ValLoop')
+      test_cfg = dict(type='TestLoop')
+      default_hooks = dict(
+          timer=dict(type='IterTimerHook'),
+          logger=dict(type='LoggerHook', interval=12000, log_metric_by_epoch=False),
+          param_scheduler=dict(type='ParamSchedulerHook'),
+          checkpoint=dict(
+              type='CheckpointHook', by_epoch=False, interval=iters // 10),
+          sampler_seed=dict(type='DistSamplerSeedHook'),
+          visualization=dict(type='SegVisualizationHook', draw=True, interval=1))
+      
+      randomness = dict(seed=304)
+      ```
+      Here, only runtime and dataloaders are inherited from `_base_`, so the `scheduler` and `model` are defined inside this config file
 
 ## Training 
 
@@ -272,6 +370,11 @@ For training,
 - train.py is located under `mmsegmentation/tools`, and it needs config file as an argument
 
 ## Meaning behind the naming of config file
+
+
+## Visualization
+
+`python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py --work-dir work_dir/visualization`
 
 # Reference
 - https://github.com/open-mmlab/mmsegmentation
