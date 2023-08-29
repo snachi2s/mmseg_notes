@@ -223,7 +223,7 @@ dataset_type = 'GreenHouseDataset'
 
 
 ## Defining the model
-      location: `mmsegmentation\configs\_base_\models\segformer_mit-b0.py`
+      location: `mmsegmentation/configs/_base_/models/segformer_mit-b0.py`
    - We define the data preprocessor like mean, and std.dev of the dataset, defining encoder and decoder head with number of classes,  
    - In most cases, we will train on the available segmentation models so there won't be many changes in the respective model file. If we want to implement a new model from scratch, then refer [here](https://mmsegmentation.readthedocs.io/en/main/advanced_guides/add_models.html)
    - Necessary changes:
@@ -233,12 +233,12 @@ dataset_type = 'GreenHouseDataset'
        - Trying out with different decoder heads if it is not already implemented in mmsegmentation
 
 ## Scheduler
-      `location: mmsegmentation\configs\_base_\schedules\schedule_80k.py`
+      `location: mmsegmentation/configs/_base_/schedules/schedule_80k.py`
   - Here, we define the optimizer, learning rate scheduler, max. iterations, and checkpoints storage
   - Training configurations can be defined based on iterations or epochs. Validation loops and checkpoints can be performed for every epoch or on a periodic basis.
 
 ## default_runtime
-      `location: mmsegmentation\configs\_base_\default_runtime.py`
+      `location: mmsegmentation/configs/_base_/default_runtime.py`
    - In this file, we define the visualization and logger hooks
 
 Once these components are set up, the next would be to define the config file for our model.
@@ -360,21 +360,56 @@ Once these components are set up, the next would be to define the config file fo
       
       randomness = dict(seed=304)
       ```
-      Here, only runtime and dataloaders are inherited from `_base_`, so the `scheduler` and `model` are defined inside this config file
+      Here, only runtime and dataloaders are inherited from `_base_`, so the `scheduler` and `model` are defined(need to be) inside this config file. 
 
 ## Training 
 
+- Config file is done and the next step would be the training
 For training,
 `python tools/train.py configs/model/model_with_desired_configuration.py`
 
-- train.py is located under `mmsegmentation/tools`, and it needs config file as an argument
+- train.py is located under `mmsegmentation/tools`, and it needs config file as an argument. For example, training our GreenHouse dataset with the given pidnet-s config file will be
+    `python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py`
 
-## Meaning behind the naming of config file
+- For understanding the meaning behind the naming of config files in mmseg, refer [here](https://mmsegmentation.readthedocs.io/en/main/user_guides/1_config.html#:~:text=for%20detailed%20documentation.-,Config%20Name%20Style,-We%20follow%20the)
 
 
 ## Visualization
 
-`python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py --work-dir work_dir/visualization`
+### Training visualization
+
+- mmseg also supports tensorboard, for setting up the visualization hook follow the instructions
+  - Dependancies
+    ```
+    pip install tensorboardX
+    pip install future tensorboard
+    ```
+  - Set up the visualization hook for using tensorboard functionalities by adding/modifying the following lines in `mmsegmentation/configs/_base_/default_runtime.py`
+    ```
+    vis_backends = [dict(type='LocalVisBackend'),
+                dict(type='TensorboardVisBackend')]
+    visualizer = dict(
+        type='SegLocalVisualizer', vis_backends=vis_backends, name='visualizer')
+    ```
+    
+  - Set up the scheduler for the changed logger, by adding/modifying the corresponding scheduler  `_base_/schedules/schedule_120k.py`
+    ```
+    default_hooks = dict(
+    timer=dict(type='IterTimerHook'),
+    logger=dict(type='LoggerHook', interval=50, log_metric_by_epoch=False),
+    param_scheduler=dict(type='ParamSchedulerHook'),
+    checkpoint=dict(type='CheckpointHook', by_epoch=False, interval=2000),
+    sampler_seed=dict(type='DistSamplerSeedHook'),
+    visualization=dict(type='SegVisualizationHook', draw=True, interval=2000))
+    ```
+    We set the `draw` parameter of the visualization hook to store the predictions. By setting the draw parameter, mmseg's visualization hook draws the predicted segmentation masks on the image and stores it in the directory we input in the command line(`work_dir/visualization/vis_image`)
+  
+- For visualizing the predictions during training, we need to pass in the argument for `--work-dir` which expects a folder name as input. By default, the predictions are not stored, so it is essential to pass in the directory while invoking the training script. Example command will look like this, 
+  `python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py --work-dir work_dir/visualization`
+
+- For testing,
+  `python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py --work-dir work_dir/visualization`
+
 
 # Reference
 - https://github.com/open-mmlab/mmsegmentation
