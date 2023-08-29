@@ -146,7 +146,7 @@ All these are defined under `mmseg\configs\_base_`
 dataset_type = 'GreenHouseDataset'
     data_root = 'data/GreenHouse'
     img_scale = (896, 512) #https://github.com/open-mmlab/mmsegmentation/issues/887
-    crop_size = (448,448)  #during training
+    crop_size = (448,448)  
     train_pipeline = [
         dict(type='LoadImageFromFile'),
         dict(type='LoadAnnotations'),
@@ -220,6 +220,7 @@ dataset_type = 'GreenHouseDataset'
   
     #https://mmsegmentation.readthedocs.io/en/main/user_guides/1_config.html
 ```
+In the `train_dataloader`, there is a component called `type='RepeatDataset'`, it repeats the current dataset for `N` times for training. It will be somewhat useful incase of smaller datasets.
 
 
 ## Defining the model
@@ -244,7 +245,7 @@ dataset_type = 'GreenHouseDataset'
 Once these components are set up, the next would be to define the config file for our model.
 
 ## Writing a config file 
-  ` location: mmsegmentation/configs/model_name.py`
+    `location: mmsegmentation/configs/model_name.py`
   
   - mmseg has several SOTA models pre-trained under standard datasets. We can adapt those same config files if we have our custom dataset in the standard formats such as Cityscapes, PascalVOC, and ade20k.., Or, we can create custom configs for our dataset
     
