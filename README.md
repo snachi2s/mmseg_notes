@@ -361,7 +361,7 @@ Once these components are set up, the next would be to define the config file fo
       
       randomness = dict(seed=304)
       ```
-      Here, only runtime and dataloaders are inherited from `_base_`, so the `scheduler` and `model` are defined(need to be) inside this config file. 
+    Here, only runtime and dataloaders are inherited from `_base_`, so the `scheduler` and `model` are defined(need to be) inside this config file. 
 
 ## Training 
 
@@ -386,7 +386,7 @@ For training,
     pip install future tensorboard
     ```
   - Set up the visualization hook for using tensorboard functionalities by adding/modifying the following lines in `mmsegmentation/configs/_base_/default_runtime.py`
-    ```
+    ```python
     vis_backends = [dict(type='LocalVisBackend'),
                 dict(type='TensorboardVisBackend')]
     visualizer = dict(
@@ -405,12 +405,17 @@ For training,
     ```
     We set the `draw` parameter of the visualization hook to store the predictions. By setting the draw parameter, mmseg's visualization hook draws the predicted segmentation masks on the image and stores it in the directory we input in the command line(`work_dir/visualization/vis_image`)
   
-- For visualizing the predictions during training, we need to pass in the argument for `--work-dir` which expects a folder name as input. By default, the predictions are not stored, so it is essential to pass in the directory while invoking the training script. Example command will look like this, 
-  `python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py --work-dir work_dir/visualization`
+- For visualizing the predictions during training, we need to pass in the argument for `--work-dir` which expects a folder name as input. By default, the predictions are not stored, so it is essential to pass in the directory while invoking the training script. Example command will look like this,
+   
+  ```python
+  python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py --work-dir work_dir/visualization
+  ```
 
 - For testing,
-  `python tools/train.py configs/pidnet/pidnet-s_2xb6-120k_1024x1024-cityscapes.py --work-dir work_dir/visualization`
-
+ 
+  ```python
+  python tools/test.py configs/pidnet/pidnet-s_greenhouse.py <checkpoint_path> --work-dir work_dir/visualization/test_results
+  ```
 
 # Reference
 - https://github.com/open-mmlab/mmsegmentation
